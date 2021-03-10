@@ -39,7 +39,9 @@ binary_sensor:
             mode: HEAT
             target_temperature: 50
         - homeassistant.event:
-            event: esphome.sousvide_on
+            event: esphome.sousvide_event
+            data:
+              title: turned_on
         
     name: "Sous Vide Button"
   - platform: status
