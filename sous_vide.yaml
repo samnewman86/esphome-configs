@@ -1,0 +1,91 @@
+## This project uses a Sonoff s20, other devices may use different pins etc
+esphome:
+  name: 
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: !secret ssid
+  password: !secret wifi_pass
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Sousvide Fallback Hotspot"
+    password: !secret ap_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: !secret api_pass
+
+ota:
+  password: !secret ota_pass
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      then:
+        - climate.control:
+            id: sousvide
+            mode: HEAT
+            target_temperature: 50
+        - homeassistant.event:
+            event: esphome.sousvide_on
+        
+    name: "Sous Vide Button"
+  - platform: status
+    name: "Sous Vide Status"
+dallas:
+  pin: GPIO3
+  update_interval: 5s
+## the dallas sensor is solders into the headers  
+sensor:
+  - platform: dallas
+    id: sous_vide_temp
+    index: 0
+output:
+  - platform: gpio
+    pin: GPIO12
+    id: heater
+  # Register the green LED as a dimmable output ....
+  - platform: esp8266_pwm
+    id: s20_green_led
+    pin:
+      number: GPIO13
+      inverted: True
+
+light:
+  # ... and then make a light out of it.
+  - platform: monochromatic
+    id: green
+    name: "Sonoff S20 Green LED"
+    output: s20_green_led
+# Example single-point configuration entry (for heating only)
+climate:
+  - platform: thermostat
+    name: "Sous Vide"
+    id: sousvide
+    visual:
+      min_temperature: 40
+      max_temperature: 65
+      temperature_step: 0.2
+    hysteresis: 0.1
+    sensor: sous_vide_temp
+    default_target_temperature_low: 50 °C
+    heat_action:
+      - output.turn_on: heater
+    heat_mode:
+      - light.turn_on: green
+    off_mode:
+      - light.turn_off: green
+    idle_action:
+      - output.turn_off: heater
